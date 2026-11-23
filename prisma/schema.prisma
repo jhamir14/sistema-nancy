@@ -1,0 +1,190 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Clientes del sistema
+model Customer {
+  id               String       @id @default(cuid())
+  documentType     String       @default("DNI") // DNI, CEDULA, PASSPORT, RUC, OTHER
+  documentNumber   String?
+  firstName        String
+  lastName         String
+  phone            String       // Teléfono principal (WhatsApp)
+  phoneSecondary   String?      // Teléfono secundario o de familiar
+  email            String?
+  address          String?
+  referenceAddress String?      // Referencias para cobranza domiciliaria
+  neighborhood     String?      // Barrio / Distrito / Zona
+  workplace        String?      // Ocupación o negocio del cliente
+  guarantorName    String?      // Garante / Aval / Fiador
+  guarantorPhone   String?      // Teléfono del fiador
+  creditScore      String       @default("GOOD") // EXCELLENT, GOOD, REGULAR, DEFICIENT
+  status           String       @default("ACTIVE") // ACTIVE, SUSPENDED, BLACKLIST
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  loans            Loan[]
+  shoeCredits      ShoeCredit[]
+  payments         Payment[]
+}
+
+// 2. Catálogo de Modelos de Zapatillas
+model Shoe {
+  id            String        @id @default(cuid())
+  brand         String        // Nike, Jordan, Adidas, Puma, etc.
+  model         String        // Air Force 1, Retro 4, Forum Low, etc.
+  sku           String?
+  gender        String        @default("UNISEX") // UNISEX, MENS, WOMENS, KIDS
+  category      String?       // Deportiva, Casual, Urbana, Hype
+  description   String?
+  imageUrl      String?
+  purchasePrice Float         @default(0) // Costo de compra
+  cashPrice     Float         // Precio al contado (precio normal)
+  creditPrice   Float         @default(0) // Precio de venta financiado / a cuotas
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  variants      ShoeVariant[]
+}
+
+// 3. Variantes físicas por Talla y Color (Stock)
+model ShoeVariant {
+  id            String          @id @default(cuid())
+  shoeId        String
+  shoe          Shoe            @relation(fields: [shoeId], references: [id], onDelete: Cascade)
+  size          String          // Talla (ej. 38, 39, 40, 8.5 US, etc.)
+  colorway      String          // Combinación de colores
+  stock         Int             @default(0) // Pares disponibles
+  minStockAlert Int             @default(1) // Alerta de stock bajo
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  creditItems   ShoeCreditItem[]
+}
+
+// 4. Préstamos de Dinero en Efectivo
+model Loan {
+  id                 String        @id @default(cuid())
+  loanCode           String        @unique // Ej: PRE-0001
+  customerId         String
+  customer           Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  principalAmount    Float         // Monto de capital prestado
+  interestRate       Float         // Tasa de interés (%)
+  totalInterest      Float         // Ganancia en dinero por interés
+  totalAmount        Float         // Total a devolver (Capital + Intereses)
+  frequency          String        @default("WEEKLY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY
+  installmentsCount  Int           // Cantidad de cuotas
+  disbursementDate   DateTime      @default(now())
+  firstDueDate       DateTime
+  collateral         String?       // Garantía o prenda física si aplica
+  status             String        @default("ACTIVE") // ACTIVE, PAID, DEFAULTED, REFINANCED
+  notes              String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  installments       Installment[]
+}
+
+// 5. Créditos de Zapatillas (Ventas a Plazos)
+model ShoeCredit {
+  id                String           @id @default(cuid())
+  creditCode        String           @unique // Ej: CRZ-0001
+  customerId        String
+  customer          Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  totalSaleAmount   Float            // Precio acordado de venta
+  downPayment       Float            @default(0) // Inicial
+  interestRate      Float            @default(0) // Tasa de interés (%) agregada
+  totalInterest     Float            @default(0) // Monto de interés en S/
+  financedAmount    Float            // Saldo financiado en cuotas
+  frequency         String           @default("WEEKLY") // WEEKLY, BIWEEKLY, MONTHLY
+  installmentsCount Int              // Cantidad de cuotas
+  startDate         DateTime         @default(now())
+  status            String           @default("ACTIVE") // ACTIVE, PAID, DEFAULTED, RETURNED
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  items             ShoeCreditItem[]
+  installments      Installment[]
+}
+
+// 6. Detalle de pares entregados en un Crédito de Calzado
+model ShoeCreditItem {
+  id              String       @id @default(cuid())
+  shoeCreditId    String
+  shoeCredit      ShoeCredit   @relation(fields: [shoeCreditId], references: [id], onDelete: Cascade)
+  shoeVariantId   String
+  shoeVariant     ShoeVariant  @relation(fields: [shoeVariantId], references: [id], onDelete: Restrict)
+  quantity        Int          @default(1)
+  unitCost        Float        // Costo del par al momento del crédito (para calcular ganancia neta)
+  unitCreditPrice Float        // Precio de venta financiado aplicado
+}
+
+// 7. Cuotas de Pago (Amortización)
+model Installment {
+  id                String       @id @default(cuid())
+  loanId            String?
+  loan              Loan?        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  shoeCreditId      String?
+  shoeCredit        ShoeCredit?  @relation(fields: [shoeCreditId], references: [id], onDelete: Cascade)
+  installmentNumber Int          // Cuota 1, 2, 3...
+  dueDate           DateTime     // Fecha de vencimiento
+  expectedAmount    Float        // Monto de la cuota programada
+  paidAmount        Float        @default(0) // Monto amortizado acumulado
+  penaltyAmount     Float        @default(0) // Recargo por mora
+  status            String       @default("PENDING") // PENDING, PARTIAL, PAID, OVERDUE
+  paidAt            DateTime?    // Fecha de liquidación de la cuota
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  payments          Payment[]
+}
+
+// 8. Registro de Pagos / Abonos de Caja
+model Payment {
+  id            String       @id @default(cuid())
+  receiptNumber String       @unique // Ej: REC-2026-0001
+  installmentId String
+  installment   Installment  @relation(fields: [installmentId], references: [id], onDelete: Cascade)
+  customerId    String
+  customer      Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  amount        Float        // Monto pagado
+  paymentMethod String       @default("CASH") // CASH, BANK_TRANSFER, DIGITAL_WALLET, CARD, OTHER
+  referenceCode String?      // Número de operación o voucher
+  collectedBy   String       @default("Administrador")
+  paymentDate   DateTime     @default(now())
+  notes         String?
+  createdAt     DateTime     @default(now())
+}
+
+// 9. Movimientos de Caja General (Flujo de Efectivo)
+model CashTransaction {
+  id           String   @id @default(cuid())
+  type         String   // INCOME (Ingreso) o EXPENSE (Egreso)
+  category     String   // PAYMENT_COLLECTION, DOWN_PAYMENT, LOAN_DISBURSEMENT, SHOE_INVENTORY_PURCHASE, EXTRA_EXPENSE, CAPITAL_INJECTION
+  amount       Float
+  description  String
+  referenceId  String?  // ID de préstamo, crédito o recibo asociado
+  registeredBy String   @default("Administrador")
+  createdAt    DateTime @default(now())
+}
+
+// 10. Usuarios del Sistema y Control de Acceso (Autenticación)
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  name         String
+  passwordHash String
+  salt         String
+  role         String   @default("ADMIN") // ADMIN, OPERATOR
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
