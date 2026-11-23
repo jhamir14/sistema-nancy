@@ -169,6 +169,20 @@ export function EditShoeModal({ shoe }: { shoe: ShoeData }) {
                   onChange={(e) => setImageUrl(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-mono"
                 />
+
+                {/* Vista previa en vivo de la foto */}
+                {imageUrl && (
+                  <div className="mt-2.5 relative w-full h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                    <img
+                      src={imageUrl}
+                      alt="Vista previa"
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute bottom-1.5 right-2 px-2 py-0.5 rounded bg-slate-900/70 text-[9px] font-bold text-white">
+                      Vista Previa
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

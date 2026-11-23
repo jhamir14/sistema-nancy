@@ -23,15 +23,15 @@ export async function verifyPassword(password: string, hash: string, salt: strin
   }
 }
 
-// Asegurar que exista al menos el usuario Administrador
+// Asegurar que exista al menos el usuario Administrador (Nancy)
 export async function ensureDefaultAdmin() {
   try {
     const count = await prisma.user.count();
     if (count === 0) {
-      const { hash, salt } = await hashPassword("admin123");
+      const { hash, salt } = await hashPassword("nancy123");
       await prisma.user.create({
         data: {
-          username: "admin",
+          username: "nancy",
           name: "Nancy (Administradora)",
           passwordHash: hash,
           salt: salt,
@@ -39,7 +39,7 @@ export async function ensureDefaultAdmin() {
           isActive: true,
         },
       });
-      console.log("Usuario Administrador por defecto creado: admin / admin123");
+      console.log("Usuario Administrador por defecto creado: nancy / nancy123");
     }
   } catch (error) {
     console.error("Error al verificar o inicializar admin:", error);

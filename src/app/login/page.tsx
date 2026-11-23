@@ -9,9 +9,7 @@ import {
   EyeOff,
   Loader2,
   ShieldCheck,
-  Sparkles,
   ArrowRight,
-  KeyRound,
 } from "lucide-react";
 
 export default function LoginPage() {
@@ -44,12 +42,6 @@ export default function LoginPage() {
       // Redirigir al dashboard al autenticar correctamente
       window.location.href = "/";
     }
-  };
-
-  const handleQuickFill = () => {
-    setUsername("admin");
-    setPassword("admin123");
-    setError(null);
   };
 
   return (
@@ -103,7 +95,7 @@ export default function LoginPage() {
                   autoCapitalize="none"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Ej. admin"
+                  placeholder="Ingresa tu usuario"
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-700 bg-slate-800/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium transition"
                 />
               </div>
@@ -154,21 +146,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Quick-fill helper for Nancy */}
-          <div className="pt-2 border-t border-slate-800 text-center">
-            <button
-              type="button"
-              onClick={handleQuickFill}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700/80 text-slate-300 hover:text-amber-400 text-[11px] font-semibold transition border border-slate-700/50"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-              <span>Usar credenciales de Administrador</span>
-            </button>
-            <p className="text-[10px] text-slate-500 mt-2">
-              Usuario: <strong className="text-slate-400">admin</strong> • Contraseña: <strong className="text-slate-400">admin123</strong>
-            </p>
-          </div>
         </div>
 
         {/* Security Footer Note */}
